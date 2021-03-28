@@ -13,7 +13,7 @@ Open terminal in the chat directory and run:
 Start the server first  
 `./bin/server`  
 
-### Start the client only after starting the server
+Start the client only after starting the server  
 `./bin/client`  
 
 Note:
