@@ -13,13 +13,13 @@ Open terminal in the chat directory and run:
 Start the server first  
 `./bin/server`  
 
-Running the client(s)  
+Start the client only after starting the server
 `./bin/client`  
 
 Note:
 Both the client and server can only send a message once it has received one and vice versa.  
 
-To avoid connection error: close the client before closing the server.  
+To avoid subsequent connection error(s): close the client before closing the server.  
 
 ### Net commands
 Check if port is in use:  
