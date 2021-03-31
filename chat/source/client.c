@@ -42,6 +42,8 @@ int main()
     {
         printf("There was an error making a connection to the remote socket \n\n");
         return -1;
+    }else{
+        printf("Enter DISCONNECT to terminate connection\n");
     }
 
 
@@ -52,7 +54,10 @@ int main()
         send(fd, message, strlen(message), 0);
         recv(fd, new_message, sizeof(new_message), 0);
         printf("Response: %s\n", new_message);
-        //An extra breaking condition can be added here (to terminate the while loop)
+
+        //If the client receives a disconnect successful message, it terminates
+        if (strncmp("DISCONNECT SUCCESSFUL", new_message, strlen(new_message)) == 0)
+            break;
     }
 
     close(fd);
