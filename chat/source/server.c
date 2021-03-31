@@ -16,7 +16,7 @@
 #include <unistd.h> // for close
 
 
-#define PORT 9051
+#define PORT 9051  // The port
 
 // Client structure
 struct client
@@ -56,6 +56,7 @@ void handleClient(int client_socket){
 
         }
         printf("Enter a message: ");
+        // strcpy(new_message, "You have reached the server"); /** uncomment line & comment below line 4 clean demo **/
         fgets(new_message, 255, stdin);
         send(client_socket, new_message, strlen(new_message), 0);
     }
@@ -103,30 +104,18 @@ int main()
     // Listen for connections from clients. Max: 3
     listen(fd, 10);
 
-
-<<<<<<< HEAD
-    // Connection handling
-    while (client_socket)
-    {
-        recv(client_socket, message, 255, 0);
-        printf("Message: %s\n", message);
-=======
     while(1){ // The server listens eternally
         printf("[Server] Waiting for connections \n");
         // Save client socket
         int client_socket = accept(fd, (struct sockaddr *)NULL, NULL);
         if (client_socket)
             printf("[SERVER] Client %d Connected successfully\n", client_socket);
->>>>>>> Modified server code
 
         handleClient(client_socket); // handle clients (one at a time)
     }
 
 
-    // Connection handling
-
-
-    // // Close socket
+    // Close socket (unreachable though)
     close(fd);
 
     return 0;

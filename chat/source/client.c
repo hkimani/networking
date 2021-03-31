@@ -13,6 +13,8 @@
 #include <fcntl.h>  // for open
 #include <unistd.h> // for close
 
+#define PORT 9051
+
 int main()
 {
     // Socket variable
@@ -31,7 +33,7 @@ int main()
     fd = socket(AF_INET, SOCK_STREAM, 0);
 
     server.sin_family = AF_INET;
-    server.sin_port = htons(9051);
+    server.sin_port = htons(PORT);
     server.sin_addr.s_addr = INADDR_ANY;
 
     // Client connects to server
