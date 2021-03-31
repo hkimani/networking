@@ -1,4 +1,9 @@
-## Assignment 2: Chat application
+## Assignment 2: Chat application  
+Tested on ubuntu 20.04  
+
+### Install dependencies
+`sudo apt-get install build-essential`  
+`sudo apt-get install net-tools`  
 
 ### Directory structure
 bin/: Final compiled binary files  
