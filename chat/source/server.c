@@ -33,6 +33,38 @@ void error(const char *msg){
 }
 
 
+//Function to handle client connections (communications with server)
+void handleClient(int client_socket){
+
+    // Message store for messages from server
+    char message[256] = "";
+    char new_message[256] = "";
+    char response[256] = "Connection success";
+
+    while (client_socket)
+    {
+        recv(client_socket, message, 255, 0);
+        printf("Response: %s\n", message);
+
+        // If the server receives "DISCONNECT", it terminates connection with the client
+        if(strncmp(message, "DISCONNECT", 10) == 0){
+            strcpy(new_message, "DISCONNECT SUCCESSFUL");
+            send(client_socket, new_message, strlen(new_message), 0);
+
+            // close the client socket and break out of the function, back to the server's waiting state
+            break;
+
+        }
+        printf("Enter a message: ");
+        fgets(new_message, 255, stdin);
+        send(client_socket, new_message, strlen(new_message), 0);
+    }
+
+    close(client_socket);
+    printf("[SERVER] Terminated connection \n");
+}
+
+
 int main()
 {
 
@@ -44,11 +76,6 @@ int main()
 
     // Connection file descriptor. (Connection Id)
     int conn;
-
-    // Message store for messages from server
-    char message[256] = "";
-    char new_message[256] = "";
-    char response[256] = "Connection success";
 
     bool connected[2] = {false, false};
 
@@ -74,29 +101,30 @@ int main()
 
 
     // Listen for connections from clients. Max: 3
-    listen(fd, 3);
+    listen(fd, 10);
 
-    // Save client socket
-    int client_socket = accept(fd, (struct sockaddr *)NULL, NULL);
-    if (client_socket)
-        printf("[SERVER] Client %d Connected successfully\n", client_socket);
 
+<<<<<<< HEAD
     // Connection handling
     while (client_socket)
     {
         recv(client_socket, message, 255, 0);
         printf("Message: %s\n", message);
+=======
+    while(1){ // The server listens eternally
+        printf("[Server] Waiting for connections \n");
+        // Save client socket
+        int client_socket = accept(fd, (struct sockaddr *)NULL, NULL);
+        if (client_socket)
+            printf("[SERVER] Client %d Connected successfully\n", client_socket);
+>>>>>>> Modified server code
 
-        // If the serve receives "DISCONNECT", it terminates connection with the client
-        if(strncmp(message, "DISCONNECT", 10) == 0){
-            strcpy(new_message, "DISCONNECT SUCCESSFUL");
-            send(client_socket, new_message, strlen(new_message), 0);
-             break;
-        }
-        printf("Enter a message: ");
-        fgets(new_message, 255, stdin);
-        send(client_socket, new_message, strlen(new_message), 0);
+        handleClient(client_socket); // handle clients (one at a time)
     }
+
+
+    // Connection handling
+
 
     // // Close socket
     close(fd);
