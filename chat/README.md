@@ -7,7 +7,7 @@ Makefile: automation tool
 
 ### Compiling the program
 Open terminal in the chat directory and run:  
-`make`  
+`make compile`  
 
 ### Running the program(s)
 Start the server first  
