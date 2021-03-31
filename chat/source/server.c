@@ -85,7 +85,7 @@ int main()
     while (client_socket)
     {
         recv(client_socket, message, 255, 0);
-        printf("Response: %s\n", message);
+        printf("Message: %s\n", message);
 
         // If the serve receives "DISCONNECT", it terminates connection with the client
         if(strncmp(message, "DISCONNECT", 10) == 0){
