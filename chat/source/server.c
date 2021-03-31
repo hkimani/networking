@@ -68,14 +68,14 @@ int main()
     while (client_socket)
     {
         recv(client_socket, message, 100, 0);
-        printf("Response: %s\n", message);
+        printf("Message: %s\n", message);
         printf("Enter a message: ");
         fgets(new_message, 100, stdin);
         send(client_socket, new_message, strlen(new_message), 0);
     }
 
     // // Close socket
-    // close(fd);
+    close(fd);
 
     return 0;
 }
