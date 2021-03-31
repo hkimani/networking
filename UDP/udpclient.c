@@ -22,7 +22,7 @@ int main()
     int fd;
 
     // Connection file descriptor. (Connection Id)
-   // int conn;
+    // int conn;
 
     // Message store for messages from server
     char message[256] = "";
@@ -32,14 +32,12 @@ int main()
 
     fd = socket(AF_INET, SOCK_DGRAM, 0);
 
-
-
     server.sin_family = AF_INET;
     server.sin_port = htons(9056);
     server.sin_addr.s_addr = INADDR_ANY;
 
     // Client connects to server
-   // int connection_status = connect(fd, (struct sockaddr *)&server, sizeof(server)); //This connects the client to the server.
+    // int connection_status = connect(fd, (struct sockaddr *)&server, sizeof(server)); //This connects the client to the server.
     
     // check for error with the connection
     if (!(fd > 0))
