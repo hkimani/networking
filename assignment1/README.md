@@ -5,11 +5,19 @@ Tested on ubuntu 20.04
 `sudo apt-get install build-essential`
 
 ### Compiling the program(s)
-`make tcp_client && make tcp_server`
+`make compile_tcp`  
+`make compile_udp`  
 
-### Running the program(s)
+### Running the TCP program(s)
 open new terminal and run:  
 `./tcp_server`  
 
 open other terminal:  
 `./tcp_client`  
+
+### Running the UDP program(s)
+open new terminal and run:  
+`./udpserver`  
+
+open other terminal:  
+`./udpclient`  
