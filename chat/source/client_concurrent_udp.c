@@ -13,7 +13,7 @@
 #include <fcntl.h>  // for open
 #include <unistd.h> // for close
 
-#define PORT 9051
+#define PORT 9056
     
 
 int main()
@@ -31,7 +31,7 @@ int main()
     char message[256] = "";
     char new_message[256] = "";
     char response[256] = "Connection success";
-    char connect_message[256] ="new client has connected";
+    char connect_message[256] ="Hello, Client to server \n";
 
 
     fd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -51,7 +51,7 @@ int main()
         printf("There was an error making a connection to the remote socket \n\n");
         return -1;
     }else{
-        printf("Enter DISCONNECT to terminate connection\n");
+        printf("[Client] Client starting... \n");
         sendto(fd, connect_message, 256, 0,(struct sockaddr*)&server,sizeof(server));
 
         recvfrom(fd, new_message, 256, 0,(struct sockaddr *)&server,&size);
@@ -65,20 +65,13 @@ int main()
     while (1)
     {
 
-        
-
-       printf(" Client: Enter a message: \n");
+        printf(" Client: Enter a message: \n");
         fgets(message, 100, stdin);
         sendto(fd, message, 256, 0,(struct sockaddr*)&server,sizeof(server));
         recvfrom(fd, new_message, 256, 0,(struct sockaddr *)&server,&size);
         printf("Response from Server: %s \n", new_message);
 
 
-        
-
-        //If the client receives a disconnect successful message, it terminates
-        if (strncmp("DISCONNECT SUCCESSFUL", new_message, strlen(new_message)) == 0)
-            break;
     }
 
     close(fd);
