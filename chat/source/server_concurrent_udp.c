@@ -15,7 +15,18 @@
 #include <fcntl.h>  // for open
 #include <unistd.h> // for close
 
+//For creating threads
+#include <pthread.h>
+
 #define PORT 9056  // The port
+
+struct sockaddr_in client; //destination address
+int size = sizeof(client); //size of the client
+
+// Message store for messages from server
+char response[256] = "Connection success";
+char new_message[256] = "";
+char message[256] = "";
 
 // Client structure
 struct client
@@ -25,6 +36,12 @@ struct client
     bool online;
 };
 
+//structure for arguments to the thread
+typedef struct Args{
+    int fd;
+    struct sockaddr_in client;
+} Args;
+
 
 // Function to print errors and exit
 void error(const char *msg){
@@ -33,16 +50,11 @@ void error(const char *msg){
 }
 
 
-void handleClient(int fd){
-    struct sockaddr_in client;
-    int size = sizeof(client);
+void* handleClient(void* p_fd){
+    //type cast the fd to an integer pointer
+    int fd = *((int *)p_fd);
+    free(p_fd); //free the pointer
 
-    // Message store for messages from server
-    char response[256] = "Connection success";
-    char new_message[256] = "";
-    char message[256] = "";
-    recvfrom(fd, message, 256, 0, (struct sockaddr*)&client, &size);
-    printf("Response from client: %s  \n", message);
     printf("Server: Enter a message: ");
     fgets(new_message, 100, stdin);
     sendto(fd, new_message, 256, 0,(struct sockaddr*)&client,sizeof(client));
@@ -52,7 +64,8 @@ int main()
 {
 
     // Socket variable
-    struct sockaddr_in server;
+     struct sockaddr_in server;
+
 
     // File descriptor. (Socket Id)
     int fd;
@@ -82,10 +95,20 @@ int main()
 
 
     while (1){  // The server listens eternally
-        handleClient(fd);   // handles the client connection
+
+        pthread_t thread;
+
+        //receive message from client
+        recvfrom(fd, message, 256, 0, (struct sockaddr*)&client, &size);
+        printf("Response from client: %s  \n", message);
+
+        //Arguments to the thread  (fd)
+        int* p_fd = malloc(sizeof(int));
+        *p_fd = fd;
+        pthread_create(&thread, NULL, handleClient, p_fd);
     }
 
-     // Close socket
+    // Close socket
     close(fd);
 
     return 0;
