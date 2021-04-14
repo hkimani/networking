@@ -34,6 +34,44 @@ void error(const char *msg){
     exit(1);
 }
 
+// Handles the authentication process - Login, Account creation
+void authenticate(int client_socket){
+    char client_reply[255];
+    char auth_prompt[] = "Welcome\n "
+                         "choose an option (press 1 or 2): \n"
+                         "1.  Login \n"
+                         "2. Create New Account \n";
+    char username_prompt[] = "Enter your Username: ";
+    char pass_prompt[] = "Enter your Password: ";
+    char username[30], password[20];
+
+    if(client_socket){ // send the authentication message
+        send(client_socket, auth_prompt, strlen(auth_prompt), 0);
+        recv(client_socket, client_reply, 255, 0);
+
+        if (strncmp("1", client_reply, 1) == 0){ // Log In
+
+            // Get Username
+            send(client_socket, username_prompt, strlen(auth_prompt), 0);
+            recv(client_socket, username, 30, 0);
+            printf("Username : %s", username);
+
+            // Get Password
+            send(client_socket, pass_prompt, strlen(auth_prompt), 0);
+            recv(client_socket, password, 30, 0);
+            printf("Password Entered: %s", password);
+
+        }
+
+        else if (strncmp("2", client_reply, 1) == 0){ // Account Creation
+            send(client_socket, username_prompt, strlen(auth_prompt), 0);
+            recv(client_socket, client_reply, 255, 0);
+            printf("Username Entered: %s", client_reply);
+        }
+        else
+            printf("An invalid input!");
+    }
+}
 
 //Function to handle client connections (communications with server)
 void* handleClient(void* pclient_socket){
@@ -47,6 +85,7 @@ void* handleClient(void* pclient_socket){
     char new_message[256] = "";
     char response[256] = "Connection success";
 
+    authenticate(client_socket);
     while (client_socket)
     {
         recv(client_socket, message, 255, 0);
@@ -112,7 +151,7 @@ int main()
     listen(fd, 10);
 
 
-    while(1){ // The server listens eternally
+    for(;;){ // The server listens eternally
         printf("[Server] Waiting for connections \n");
         // Save client socket
         int client_socket = accept(fd, (struct sockaddr *)NULL, NULL);
