@@ -35,42 +35,55 @@ void error(const char *msg){
 }
 
 // Handles the authentication process - Login, Account creation
-void authenticate(int client_socket){
-    char client_reply[255];
+int authenticate(int client_socket){
     char auth_prompt[] = "Welcome\n "
                          "choose an option (press 1 or 2): \n"
                          "1.  Login \n"
                          "2. Create New Account \n";
-    char username_prompt[] = "Enter your Username: ";
-    char pass_prompt[] = "Enter your Password: ";
-    char username[30], password[20];
+    char client_reply[255];
 
-    if(client_socket){ // send the authentication message
+    if(client_socket){
+        //send the authentication prompt
         send(client_socket, auth_prompt, strlen(auth_prompt), 0);
         recv(client_socket, client_reply, 255, 0);
 
-        if (strncmp("1", client_reply, 1) == 0){ // Log In
+        char username_prompt[] = "Enter your Username: ";
+        char pass_prompt[] = "Enter your password: ";
+        char pass2_prompt[] = "Confirm your password: ";
+        char username[30], password[30], password2[30];
 
+        if (strncmp("1", client_reply, 1) == 0) { // Log In
             // Get Username
-            send(client_socket, username_prompt, strlen(auth_prompt), 0);
+
+            send(client_socket, username_prompt, strlen(username_prompt), 0);
             recv(client_socket, username, 30, 0);
-            printf("Username : %s", username);
 
-            // Get Password
-            send(client_socket, pass_prompt, strlen(auth_prompt), 0);
+            // Get the Password
+
+            send(client_socket, pass_prompt, strlen(pass_prompt), 0);
             recv(client_socket, password, 30, 0);
-            printf("Password Entered: %s", password);
+            return 1;
+        }
+        else if (strncmp("2", client_reply, 1) == 0) { // Log In
+            // Get Username
+            send(client_socket, username_prompt, strlen(username_prompt), 0);
+            recv(client_socket, username, 30, 0);
 
+            // Get the Password
+            send(client_socket, pass_prompt, strlen(pass_prompt), 0);
+            recv(client_socket, password, 30, 0);
+            // Get the Password confirmation
+            send(client_socket, pass2_prompt, strlen(pass2_prompt), 0);
+            recv(client_socket, password2, 30, 0);
+            return 1;
+        }
+        else{
+            printf("Unknown Option Selected \n");
         }
 
-        else if (strncmp("2", client_reply, 1) == 0){ // Account Creation
-            send(client_socket, username_prompt, strlen(auth_prompt), 0);
-            recv(client_socket, client_reply, 255, 0);
-            printf("Username Entered: %s", client_reply);
-        }
-        else
-            printf("An invalid input!");
     }
+
+    return 0;
 }
 
 //Function to handle client connections (communications with server)
@@ -85,30 +98,43 @@ void* handleClient(void* pclient_socket){
     char new_message[256] = "";
     char response[256] = "Connection success";
 
-    authenticate(client_socket);
-    while (client_socket)
-    {
-        recv(client_socket, message, 255, 0);
-        printf("Response: %s\n", message);
+    int authenticated = authenticate(client_socket);
 
-        // If the server receives "DISCONNECT", it terminates connection with the client
-        if(strncmp(message, "DISCONNECT", 10) == 0){
-            strcpy(new_message, "DISCONNECT SUCCESSFUL");
+    if (authenticated){ // If log in details are correct, continue with the client handling
+
+       //  send the authenticated message to allow the client to proceed
+        char auth_msg[50];
+        strcpy(auth_msg, "AUTHENTICATED");
+        send(client_socket, auth_msg, strlen(auth_msg), 0);
+
+
+        while (client_socket){
+            recv(client_socket, message, 255, 0);
+            printf("Response: %s\n", message);
+
+            // If the server receives "DISCONNECT", it terminates connection with the client
+            if(strncmp(message, "DISCONNECT", 10) == 0){
+                strcpy(new_message, "DISCONNECT SUCCESSFUL");
+                send(client_socket, new_message, strlen(new_message), 0);
+
+                //  break out of the function, close the client socket and back to the server's waiting state
+                break;
+
+            }
+            // strcpy(new_message, "You have reached the server");
+            printf("Enter a message: ");
+            fgets(new_message, 255, stdin);
             send(client_socket, new_message, strlen(new_message), 0);
 
-            //  break out of the function, close the client socket and back to the server's waiting state
-            break;
-
         }
-        // strcpy(new_message, "You have reached the server");
-        printf("Enter a message: ");
-        fgets(new_message, 255, stdin);
-        send(client_socket, new_message, strlen(new_message), 0);
 
     }
 
+
     close(client_socket);
     printf("[SERVER] Terminated connection \n");
+
+    return NULL;
 }
 
 

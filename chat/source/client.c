@@ -50,20 +50,25 @@ int main()
          The client chooses to either log in or create a new account
          */
         for(;;){ // The client will not send messages until they are authenticated
-            recv(fd, new_message, sizeof(new_message), 0);
-            printf(" \n %s", new_message);
-            fgets(message, 100, stdin); // get user's choice
-            send(fd, message, strlen(message), 0);
 
-            if (strncmp("AUTHENTICATED", new_message, strlen(new_message)) == 0)
+            bzero(new_message, sizeof(new_message));  // clear the new_message variable
+            recv(fd, new_message, sizeof(new_message), 0);
+            if (strncmp("AUTHENTICATED", new_message, strlen(new_message)) == 0){
+                printf("\n Enter DISCONNECT to terminate connection\n");
                 break;
+            }else{
+
+                printf(" %s", new_message);
+                fgets(message, 100, stdin); // get user's choice
+                send(fd, message, strlen(message), 0);
+            }
+
         }
 
 
     }
 
     for(;;){
-        printf("Enter DISCONNECT to terminate connection\n");
         printf("Enter a message: ");
         fgets(message, 100, stdin);
         send(fd, message, strlen(message), 0);
