@@ -34,6 +34,24 @@ void error(const char *msg){
     exit(1);
 }
 
+// Function to broadcast messages -- work in progress
+void send_message(char *msg, int uid){
+    pthread_mutex_lock(&clients_mutex);
+
+    for(int i=0; i<MAX_CLIENTS; ++i){
+        if(clients[i]){
+            if(clients[i]->uid != uid){
+                if(write(clients[i]->sockfd, msg, strlen(s)) < 0){
+                    perror("ERROR: write to descriptor failed");
+                    break;
+                }
+            }
+        }
+    }
+
+    pthread_mutex_unlock(&clients_mutex);
+}
+
 // Handles the authentication process - Login, Account creation
 int authenticate(int client_socket){
     char auth_prompt[] = "Welcome\n "
