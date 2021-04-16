@@ -13,15 +13,72 @@
 #include <fcntl.h>  // for open
 #include <unistd.h> // for close
 
+#include <pthread.h>
+
 #define PORT 9051
+#define LENGTH 2048
+
+char name[30];  // Will store the client's username
+
+// File descriptor. (Socket Id)
+int fd;
+
+void str_overwrite_stdout() {
+    printf("%s", "> ");
+    fflush(stdout);
+}
+
+void str_trim_lf (char* arr, int length) {
+    int i;
+    for (i = 0; i < length; i++) { // trim \n
+        if (arr[i] == '\n') {
+            arr[i] = '\0';
+            break;
+        }
+    }
+}
+
+void send_msg_handler() {
+    char message[LENGTH] = {};
+    char buffer[LENGTH + 32] = {};
+
+    while(1) {
+        str_overwrite_stdout();
+        fgets(message, LENGTH, stdin);
+        str_trim_lf(message, LENGTH);
+
+        if (strcmp(message, "DISCONNECT") == 0) {
+            break;
+        } else {
+            sprintf(buffer, "%s: %s\n", name, message);
+            send(fd, buffer, strlen(buffer), 0);
+        }
+
+        bzero(message, LENGTH);
+        bzero(buffer, LENGTH + 32);
+    }
+}
+
+void recv_msg_handler() {
+    char message[LENGTH] = {};
+    while (1) {
+        int receive = recv(fd, message, LENGTH, 0);
+        if (receive > 0) {
+            printf("%s", message);
+            str_overwrite_stdout();
+        } else if (receive == 0) {
+            break;
+        } else {
+            // -1
+        }
+        memset(message, 0, sizeof(message));
+    }
+}
 
 int main()
 {
     // Socket variable
     struct sockaddr_in server;
-
-    // File descriptor. (Socket Id)
-    int fd;
 
     // Connection file descriptor. (Connection Id)
     int conn;
@@ -44,43 +101,32 @@ int main()
     {
         printf("There was an error making a connection to the remote socket \n\n");
         return -1;
-    }else{
-        /* The client receives the first response from the server
-         This response is for authentication purposes
-         The client chooses to either log in or create a new account
-         */
-        for(;;){ // The client will not send messages until they are authenticated
-
-            bzero(new_message, sizeof(new_message));  // clear the new_message variable
-            recv(fd, new_message, sizeof(new_message), 0);
-            if (strncmp("AUTHENTICATED", new_message, strlen(new_message)) == 0){
-                printf("\n Enter DISCONNECT to terminate connection\n");
-                break;
-            }else{
-
-                printf(" %s", new_message);
-                fgets(message, 100, stdin); // get user's choice
-                send(fd, message, strlen(message), 0);
-            }
-
-        }
-
-
     }
 
-    for(;;){
-        printf("Enter a message: ");
-        fgets(message, 100, stdin);
-        send(fd, message, strlen(message), 0);
-        recv(fd, new_message, sizeof(new_message), 0);
-        printf("Response: %s\n", new_message);
+    printf("Please enter your name: ");
+    fgets(name, 30, stdin);
+    str_trim_lf(name, strlen(name));
+    // Send name
+    send(fd, name, 32, 0);
 
-        //If the client receives a disconnect successful message, it terminates
-        if (strncmp("DISCONNECT SUCCESSFUL", new_message, strlen(new_message)) == 0)
-            break;
+    printf("=== WELCOME TO THE CHATROOM ===\n");
+
+    // send message
+    pthread_t send_msg_thread;
+    if(pthread_create(&send_msg_thread, NULL, (void *) send_msg_handler, NULL) != 0){
+        printf("ERROR: pthread\n");
+        return EXIT_FAILURE;
+    }
+
+    // receive message
+    pthread_t recv_msg_thread;
+    if(pthread_create(&recv_msg_thread, NULL, (void *) recv_msg_handler, NULL) != 0){
+        printf("ERROR: pthread\n");
+        return EXIT_FAILURE;
     }
 
     close(fd);
 
     return 0;
+
 }

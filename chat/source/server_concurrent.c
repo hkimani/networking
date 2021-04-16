@@ -18,11 +18,13 @@
 //For creating threads
 #include <pthread.h>
 
+#include <signal.h>
+
 #define PORT 9051
 #define MAX_CLIENTS 20
 #define BUFFER_SIZE 2048
 
-static unsigned int cli_count = 0;
+static _Atomic unsigned int cli_count = 0;
 static int uid = 10;
 
 /* Client structure */
@@ -119,7 +121,7 @@ void *handleClient(void *arg){
 
     // Name
     if(recv(cli->sockfd, name, 32, 0) <= 0 || strlen(name) <  2 || strlen(name) >= 32-1){
-        printf("Didn't enter the name.\n");
+        printf("Your Name is required!.\n");
         leave_flag = 1;
     } else{
         strcpy(cli->name, name);
@@ -192,6 +194,13 @@ int main()
     if (fd < 0)
         error("Connection failed. Error occurred \n");
 
+    /* Ignore pipe signals */
+    signal(SIGPIPE, SIG_IGN);
+
+    if(setsockopt(fd, SOL_SOCKET,(SO_REUSEPORT | SO_REUSEADDR),(char*)&option,sizeof(option)) < 0){
+        perror("ERROR: setsockopt failed");
+        return EXIT_FAILURE;
+    }
 
     // Assigns identifier to the socket, prints an error if the binding fails
     if(bind(fd, (struct sockaddr *)&server, sizeof(server)) < 0)
@@ -230,6 +239,8 @@ int main()
         enqueue(cli);
         pthread_create(&thread, NULL, &handleClient, (void*)cli);
 
+        /* Reduce CPU usage */
+        sleep(1);
     }
 
     return 0;
