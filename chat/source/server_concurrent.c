@@ -19,14 +19,20 @@
 #include <pthread.h>
 
 #define PORT 9051
+#define MAX_CLIENTS 20
 
-// Client structure
-struct client
-{
-    char name[256];
-    int sid;
-    bool online;
-};
+
+/* Client structure */
+typedef struct{
+    struct sockaddr_in address;
+    int sockfd;
+    int uid;
+    char name[32];
+} client_t;
+
+client_t *clients[MAX_CLIENTS];  //Array of clients in chatroom
+
+pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;  // for mutual exclusion
 
 // Function to print errors and exit
 void error(const char *msg){
@@ -35,126 +41,80 @@ void error(const char *msg){
 }
 
 // Function to broadcast messages -- work in progress
-void send_message(char *msg, int uid){
+void send_message(char *msg, int uid){  // takes the msg to send, and the id of the sender
+    // function to broadcast message
     pthread_mutex_lock(&clients_mutex);
 
     for(int i=0; i<MAX_CLIENTS; ++i){
         if(clients[i]){
-            if(clients[i]->uid != uid){
-                if(write(clients[i]->sockfd, msg, strlen(s)) < 0){
+            if(clients[i]->uid != uid){  // send to every client except self
+                if(write(clients[i]->sockfd, msg, strlen(msg)) < 0){
                     perror("ERROR: write to descriptor failed");
                     break;
                 }
             }
         }
     }
-
     pthread_mutex_unlock(&clients_mutex);
 }
 
-// Handles the authentication process - Login, Account creation
-int authenticate(int client_socket){
-    char auth_prompt[] = "Welcome\n "
-                         "choose an option (press 1 or 2): \n"
-                         "1.  Login \n"
-                         "2. Create New Account \n";
-    char client_reply[255];
+/* Handle all communication with the client */
+void *handle_client(void *arg){
+    char buff_out[BUFFER_SZ];
+    char name[32];
+    int leave_flag = 0;
 
-    if(client_socket){
-        //send the authentication prompt
-        send(client_socket, auth_prompt, strlen(auth_prompt), 0);
-        recv(client_socket, client_reply, 255, 0);
+    cli_count++;
+    client_t *cli = (client_t *)arg;
 
-        char username_prompt[] = "Enter your Username: ";
-        char pass_prompt[] = "Enter your password: ";
-        char pass2_prompt[] = "Confirm your password: ";
-        char username[30], password[30], password2[30];
-
-        if (strncmp("1", client_reply, 1) == 0) { // Log In
-            // Get Username
-
-            send(client_socket, username_prompt, strlen(username_prompt), 0);
-            recv(client_socket, username, 30, 0);
-
-            // Get the Password
-
-            send(client_socket, pass_prompt, strlen(pass_prompt), 0);
-            recv(client_socket, password, 30, 0);
-            return 1;
-        }
-        else if (strncmp("2", client_reply, 1) == 0) { // Log In
-            // Get Username
-            send(client_socket, username_prompt, strlen(username_prompt), 0);
-            recv(client_socket, username, 30, 0);
-
-            // Get the Password
-            send(client_socket, pass_prompt, strlen(pass_prompt), 0);
-            recv(client_socket, password, 30, 0);
-            // Get the Password confirmation
-            send(client_socket, pass2_prompt, strlen(pass2_prompt), 0);
-            recv(client_socket, password2, 30, 0);
-            return 1;
-        }
-        else{
-            printf("Unknown Option Selected \n");
-        }
-
+    // Name
+    if(recv(cli->sockfd, name, 32, 0) <= 0 || strlen(name) <  2 || strlen(name) >= 32-1){
+        printf("Didn't enter the name.\n");
+        leave_flag = 1;
+    } else{
+        strcpy(cli->name, name);
+        sprintf(buff_out, "%s has joined\n", cli->name);
+        printf("%s", buff_out);
+        send_message(buff_out, cli->uid);
     }
 
-    return 0;
-}
+    bzero(buff_out, BUFFER_SZ);
 
-//Function to handle client connections (communications with server)
-void* handleClient(void* pclient_socket){
+    while(1){
+        if (leave_flag) {
+            break;
+        }
 
-    //type cast the client socket to an integer pointer
-    int client_socket = *((int *)pclient_socket);
-    free(pclient_socket); //free the pointer
+        int receive = recv(cli->sockfd, buff_out, BUFFER_SZ, 0);
+        if (receive > 0){
+            if(strlen(buff_out) > 0){
+                send_message(buff_out, cli->uid);
 
-    // Message store for messages from server
-    char message[256] = "";
-    char new_message[256] = "";
-    char response[256] = "Connection success";
-
-    int authenticated = authenticate(client_socket);
-
-    if (authenticated){ // If log in details are correct, continue with the client handling
-
-       //  send the authenticated message to allow the client to proceed
-        char auth_msg[50];
-        strcpy(auth_msg, "AUTHENTICATED");
-        send(client_socket, auth_msg, strlen(auth_msg), 0);
-
-
-        while (client_socket){
-            recv(client_socket, message, 255, 0);
-            printf("Response: %s\n", message);
-
-            // If the server receives "DISCONNECT", it terminates connection with the client
-            if(strncmp(message, "DISCONNECT", 10) == 0){
-                strcpy(new_message, "DISCONNECT SUCCESSFUL");
-                send(client_socket, new_message, strlen(new_message), 0);
-
-                //  break out of the function, close the client socket and back to the server's waiting state
-                break;
-
+                str_trim_lf(buff_out, strlen(buff_out));
+                printf("%s -> %s\n", buff_out, cli->name);
             }
-            // strcpy(new_message, "You have reached the server");
-            printf("Enter a message: ");
-            fgets(new_message, 255, stdin);
-            send(client_socket, new_message, strlen(new_message), 0);
-
+        } else if (receive == 0 || strcmp(buff_out, "exit") == 0){
+            sprintf(buff_out, "%s has left\n", cli->name);
+            printf("%s", buff_out);
+            send_message(buff_out, cli->uid);
+            leave_flag = 1;
+        } else {
+            printf("ERROR: -1\n");
+            leave_flag = 1;
         }
 
+        bzero(buff_out, BUFFER_SZ);
     }
 
-
-    close(client_socket);
-    printf("[SERVER] Terminated connection \n");
+    /* Delete client from queue and yield thread */
+    close(cli->sockfd);
+    queue_remove(cli->uid);
+    free(cli);
+    cli_count--;
+    pthread_detach(pthread_self());
 
     return NULL;
 }
-
 
 int main()
 {
