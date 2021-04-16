@@ -20,7 +20,10 @@
 
 #define PORT 9051
 #define MAX_CLIENTS 20
+#define BUFFER_SIZE 2048
 
+static unsigned int cli_count = 0;
+static int uid = 10;
 
 /* Client structure */
 typedef struct{
@@ -70,6 +73,23 @@ void dequeue(int uid){
     pthread_mutex_unlock(&clients_mutex);
 }
 
+//Function to clear the screen
+void str_overwrite_stdout() {
+    printf("\r%s", "> ");
+    fflush(stdout);
+}
+
+// function to trim input
+void str_trim_lf (char* arr, int length) {
+    int i;
+    for (i = 0; i < length; i++) { // trim \n
+        if (arr[i] == '\n') {
+            arr[i] = '\0';
+            break;
+        }
+    }
+}
+
 // Function to broadcast messages -- work in progress
 void send_message(char *msg, int uid){  // takes the msg to send, and the id of the sender
     // function to broadcast message
@@ -89,8 +109,8 @@ void send_message(char *msg, int uid){  // takes the msg to send, and the id of 
 }
 
 /* Handle all communication with the client */
-void *handle_client(void *arg){
-    char buff_out[BUFFER_SZ];
+void *handleClient(void *arg){
+    char buff_out[BUFFER_SIZE];
     char name[32];
     int leave_flag = 0;
 
@@ -108,14 +128,14 @@ void *handle_client(void *arg){
         send_message(buff_out, cli->uid);
     }
 
-    bzero(buff_out, BUFFER_SZ);
+    bzero(buff_out, BUFFER_SIZE);
 
     while(1){
         if (leave_flag) {
             break;
         }
 
-        int receive = recv(cli->sockfd, buff_out, BUFFER_SZ, 0);
+        int receive = recv(cli->sockfd, buff_out, BUFFER_SIZE, 0);
         if (receive > 0){
             if(strlen(buff_out) > 0){
                 send_message(buff_out, cli->uid);
@@ -133,7 +153,7 @@ void *handle_client(void *arg){
             leave_flag = 1;
         }
 
-        bzero(buff_out, BUFFER_SZ);
+        bzero(buff_out, BUFFER_SIZE);
     }
 
     /* Delete client from queue and yield thread */
@@ -150,7 +170,8 @@ int main()
 {
 
     // Socket variable
-    struct sockaddr_in server;
+    struct sockaddr_in server;    //server
+    struct sockaddr_in cli_addr;  //client
 
     // File descriptor. (Socket Id)
     int fd;
@@ -181,29 +202,37 @@ int main()
     }
 
 
-    // Listen for connections from clients. Max: 3
+    // Listen for connections from clients. Max: 10
     listen(fd, 10);
 
+    printf("=== WELCOME TO THE CHATROOM ===\n");
 
-    for(;;){ // The server listens eternally
-        printf("[Server] Waiting for connections \n");
-        // Save client socket
-        int client_socket = accept(fd, (struct sockaddr *)NULL, NULL);
-        if (client_socket)
-            printf("[SERVER] Client %d Connected successfully\n", client_socket);
+    pthread_t thread;
 
-        // Do stuff with the connection
-        pthread_t thread;
-        //creating a pointer to arguments to be passed to the thread (pthread only takes pointers)
-        int* pclient_socket = malloc(sizeof(int));
-        *pclient_socket = client_socket;  // the pointer points to the client socket
+    for(;;){
+        socklen_t clilen = sizeof(cli_addr);
+        conn = accept(fd, (struct sockaddr*)&cli_addr, &clilen);
 
-        pthread_create(&thread, NULL, handleClient, pclient_socket);
-       // pthread_join(thread);
+        /* Check if max clients is reached */
+        if((cli_count + 1) == MAX_CLIENTS){
+            printf("Max clients reached. Connection Rejected ");
+            close(conn);
+            continue;
+        }
+
+        /* Client settings */
+        client_t *cli = (client_t *)malloc(sizeof(client_t));
+        cli->address = cli_addr;
+        cli->sockfd = conn;
+        cli->uid = uid++;
+
+        /* Add client to the queue and fork thread */
+        enqueue(cli);
+        pthread_create(&thread, NULL, &handleClient, (void*)cli);
+
     }
-
-    // // Close socket
-    // close(fd);
 
     return 0;
 }
+
+
