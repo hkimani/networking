@@ -40,6 +40,36 @@ void error(const char *msg){
     exit(1);
 }
 
+/* Add clients to queue */
+void enqueue(client_t *cl){
+    pthread_mutex_lock(&clients_mutex);
+
+    for(int i=0; i < MAX_CLIENTS; ++i){
+        if(!clients[i]){
+            clients[i] = cl;
+            break;
+        }
+    }
+
+    pthread_mutex_unlock(&clients_mutex);
+}
+
+/* Remove clients from queue */
+void dequeue(int uid){
+    pthread_mutex_lock(&clients_mutex);
+
+    for(int i=0; i < MAX_CLIENTS; ++i){
+        if(clients[i]){
+            if(clients[i]->uid == uid){
+                clients[i] = NULL;
+                break;
+            }
+        }
+    }
+
+    pthread_mutex_unlock(&clients_mutex);
+}
+
 // Function to broadcast messages -- work in progress
 void send_message(char *msg, int uid){  // takes the msg to send, and the id of the sender
     // function to broadcast message
@@ -108,7 +138,7 @@ void *handle_client(void *arg){
 
     /* Delete client from queue and yield thread */
     close(cli->sockfd);
-    queue_remove(cli->uid);
+    dequeue(cli->uid);
     free(cli);
     cli_count--;
     pthread_detach(pthread_self());
