@@ -128,7 +128,7 @@ int main(){
         return EXIT_FAILURE;
     }
 
-    while (1){
+    for (;;){
         if(flag){
             printf("\nBye\n");
             break;

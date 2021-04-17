@@ -104,7 +104,7 @@ void send_message(char *s, int uid){
 }
 
 /* Handle all communication with the client */
-void *handle_client(void *arg){
+void *handleClient(void *arg){
     char buff_out[BUFFER_SZ];
     char name[32];
     int leave_flag = 0;
@@ -125,7 +125,7 @@ void *handle_client(void *arg){
 
     bzero(buff_out, BUFFER_SZ);
 
-    while(1){
+    for(;;){
         if (leave_flag) {
             break;
         }
@@ -218,7 +218,7 @@ int main(){
 
         /* Add client to the queue and fork thread */
         enqueue(cli);
-        pthread_create(&tid, NULL, &handle_client, (void*)cli);
+        pthread_create(&tid, NULL, &handleClient, (void*)cli);
 
         /* Reduce CPU usage */
         sleep(1);
