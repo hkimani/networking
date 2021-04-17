@@ -56,7 +56,7 @@ void print_client_addr(struct sockaddr_in addr){
 }
 
 /* Add clients to queue */
-void queue_add(client_t *cl){
+void enqueue(client_t *cl){
     pthread_mutex_lock(&clients_mutex);
 
     for(int i=0; i < MAX_CLIENTS; ++i){
@@ -70,7 +70,7 @@ void queue_add(client_t *cl){
 }
 
 /* Remove clients to queue */
-void queue_remove(int uid){
+void dequeue(int uid){
     pthread_mutex_lock(&clients_mutex);
 
     for(int i=0; i < MAX_CLIENTS; ++i){
@@ -138,7 +138,7 @@ void *handle_client(void *arg){
                 str_trim_lf(buff_out, strlen(buff_out));
                 printf("%s -> %s\n", buff_out, cli->name);
             }
-        } else if (receive == 0 || strcmp(buff_out, "exit") == 0){
+        } else if (receive == 0 || strcmp(buff_out, "exit") == 0){  // an exit message for client exit
             sprintf(buff_out, "%s has left\n", cli->name);
             printf("%s", buff_out);
             send_message(buff_out, cli->uid);
@@ -153,7 +153,7 @@ void *handle_client(void *arg){
 
     /* Delete client from queue and yield thread */
     close(cli->sockfd);
-    queue_remove(cli->uid);
+    dequeue(cli->uid);
     free(cli);
     cli_count--;
     pthread_detach(pthread_self());
@@ -175,7 +175,6 @@ int main(){
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = inet_addr(ip);
     serv_addr.sin_port = htons(PORT);
-
     /* Ignore pipe signals */
     signal(SIGPIPE, SIG_IGN);
 
@@ -196,7 +195,7 @@ int main(){
         return EXIT_FAILURE;
     }
 
-    printf("=== WELCOME TO THE CHATROOM ===\n");
+    printf("=== CHATROOM IS OPEN ===\n");
 
     for(;;){ //Server listens eternally
         socklen_t clilen = sizeof(cli_addr);
@@ -218,7 +217,7 @@ int main(){
         cli->uid = uid++;
 
         /* Add client to the queue and fork thread */
-        queue_add(cli);
+        enqueue(cli);
         pthread_create(&tid, NULL, &handle_client, (void*)cli);
 
         /* Reduce CPU usage */
