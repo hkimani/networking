@@ -29,11 +29,13 @@ client_t *clients[MAX_CLIENTS];
 
 pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+//function to clear the screen
 void str_overwrite_stdout() {
     printf("\r%s", "> ");
     fflush(stdout);
 }
 
+// function to trim input \n
 void str_trim_lf (char* arr, int length) {
     int i;
     for (i = 0; i < length; i++) { // trim \n
@@ -44,6 +46,7 @@ void str_trim_lf (char* arr, int length) {
     }
 }
 
+//function to print ip addresses
 void print_client_addr(struct sockaddr_in addr){
     printf("%d.%d.%d.%d",
            addr.sin_addr.s_addr & 0xff,
@@ -195,7 +198,7 @@ int main(){
 
     printf("=== WELCOME TO THE CHATROOM ===\n");
 
-    while(1){
+    for(;;){ //Server listens eternally
         socklen_t clilen = sizeof(cli_addr);
         connfd = accept(listenfd, (struct sockaddr*)&cli_addr, &clilen);
 
