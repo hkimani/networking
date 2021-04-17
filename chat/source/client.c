@@ -10,6 +10,7 @@
 #include <pthread.h>
 
 #define LENGTH 2048
+#define PORT 9051
 
 // Global variables
 volatile sig_atomic_t flag = 0;
@@ -73,14 +74,9 @@ void recv_msg_handler() {
     }
 }
 
-int main(int argc, char **argv){
-    if(argc != 2){
-        printf("Usage: %s <port>\n", argv[0]);
-        return EXIT_FAILURE;
-    }
+int main(){
 
     char *ip = "127.0.0.1";
-    int port = atoi(argv[1]);
 
     signal(SIGINT, catch_ctrl_c_and_exit);
 
@@ -100,7 +96,7 @@ int main(int argc, char **argv){
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = inet_addr(ip);
-    server_addr.sin_port = htons(port);
+    server_addr.sin_port = htons(PORT);
 
 
     // Connect to Server
