@@ -17,11 +17,13 @@ volatile sig_atomic_t flag = 0;
 int sockfd = 0;
 char name[32];
 
+//function to clear the screen
 void str_overwrite_stdout() {
     printf("%s", "> ");
     fflush(stdout);
 }
 
+//function to trim the input
 void str_trim_lf (char* arr, int length) {
     int i;
     for (i = 0; i < length; i++) { // trim \n
@@ -32,10 +34,12 @@ void str_trim_lf (char* arr, int length) {
     }
 }
 
+// Catch the Ctrl+C signal (client termination)
 void catch_ctrl_c_and_exit(int sig) {
     flag = 1;
 }
 
+// handles sending messages
 void send_msg_handler() {
     char message[LENGTH] = {};
     char buffer[LENGTH + 32] = {};
@@ -58,6 +62,7 @@ void send_msg_handler() {
     catch_ctrl_c_and_exit(2);
 }
 
+//handles receiving messages
 void recv_msg_handler() {
     char message[LENGTH] = {};
     while (1) {
