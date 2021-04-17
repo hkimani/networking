@@ -12,6 +12,7 @@
 
 #define MAX_CLIENTS 100
 #define BUFFER_SZ 2048
+#define PORT 9051
 
 static _Atomic unsigned int cli_count = 0;
 static int uid = 10;
@@ -157,14 +158,9 @@ void *handle_client(void *arg){
     return NULL;
 }
 
-int main(int argc, char **argv){
-    if(argc != 2){
-        printf("Usage: %s <port>\n", argv[0]);
-        return EXIT_FAILURE;
-    }
+int main(){
 
     char *ip = "127.0.0.1";
-    int port = atoi(argv[1]);
     int option = 1;
     int listenfd = 0, connfd = 0;
     struct sockaddr_in serv_addr;
@@ -175,7 +171,7 @@ int main(int argc, char **argv){
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = inet_addr(ip);
-    serv_addr.sin_port = htons(port);
+    serv_addr.sin_port = htons(PORT);
 
     /* Ignore pipe signals */
     signal(SIGPIPE, SIG_IGN);
