@@ -99,19 +99,19 @@ void send_message(char *msg, int uid, char* receiver){  // takes the msg to be s
                 }
             }
         }
-        return;
-    }
-
-    //If no client is specified, send to all
-    for(int i=0; i<MAX_CLIENTS; ++i){
-        if(clients[i]){
-            if(clients[i]->uid != uid){   // if the client id is not sender's id, send message the client
-                if(write(clients[i]->sockfd, msg, strlen(msg)) < 0){
-                    perror("ERROR: write to descriptor failed");
-                    break;
+    }else{
+        //If no receiver is specified, send to all
+        for(int i=0; i<MAX_CLIENTS; ++i){
+            if(clients[i]){
+                if(clients[i]->uid != uid){   // if the client id is not sender's id, send message the client
+                    if(write(clients[i]->sockfd, msg, strlen(msg)) < 0){
+                        perror("ERROR: write to descriptor failed");
+                        break;
+                    }
                 }
             }
         }
+
     }
 
     pthread_mutex_unlock(&clients_mutex);
@@ -154,7 +154,6 @@ void *handleClient(void *arg){
 
                 if(strncmp(buff, "@", 1) == 0){
                     //extract the recipient's name
-                   //  bzero(receiver, strlen(receiver));
                     for(int i=0; i< strlen(buff); ++i){
                         if(buff[i] == ' ' || buff[i] == 10)  // new line character
                             break;
