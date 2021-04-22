@@ -11,7 +11,7 @@
 #include <signal.h>
 
 #define MAX_CLIENTS 100
-#define BUFFER_SZ 2048
+#define BUFFER_SIZE 2048
 #define PORT 9051
 
 static _Atomic unsigned int cli_count = 0;
@@ -50,7 +50,7 @@ void str_trim_lf (char* arr, int length) {
 void print_client_addr(struct sockaddr_in addr){
     printf("%d.%d.%d.%d",
            addr.sin_addr.s_addr & 0xff,
-           (addr.sin_addr.s_addr & 0xff00) >> 8,
+           (addr.sin_addr.s_addr & 0xff00) >> 8,    // binary right shift by 8 bits
            (addr.sin_addr.s_addr & 0xff0000) >> 16,
            (addr.sin_addr.s_addr & 0xff000000) >> 24);
 }
@@ -86,13 +86,27 @@ void dequeue(int uid){
 }
 
 /* Send message to all clients except sender */
-void send_message(char *s, int uid){
+void send_message(char *msg, int uid, char* receiver){  // takes the msg to be sent, id of sender and receiver
     pthread_mutex_lock(&clients_mutex);
 
+    //IFF a receiver is specified (Send only to that receiver) forget everyone else
+    if(receiver){
+        for(int i=0; i<MAX_CLIENTS; ++i){
+            if(strcmp(clients[i]->name, receiver) == 0){ // if the client name matches the receiver name
+                if(write(clients[i]->sockfd, msg, strlen(msg)) < 0){
+                    perror("ERROR: write to descriptor failed");
+                    break;
+                }
+            }
+        }
+        return;
+    }
+
+    //If no client is specified, send to all
     for(int i=0; i<MAX_CLIENTS; ++i){
         if(clients[i]){
-            if(clients[i]->uid != uid){
-                if(write(clients[i]->sockfd, s, strlen(s)) < 0){
+            if(clients[i]->uid != uid){   // if the client id is not sender's id, send message the client
+                if(write(clients[i]->sockfd, msg, strlen(msg)) < 0){
                     perror("ERROR: write to descriptor failed");
                     break;
                 }
@@ -105,8 +119,10 @@ void send_message(char *s, int uid){
 
 /* Handle all communication with the client */
 void *handleClient(void *arg){
-    char buff_out[BUFFER_SZ];
+    char buff_out[BUFFER_SIZE];
+    char buff[BUFFER_SIZE];
     char name[32];
+    char receiver[32];
     int leave_flag = 0;
 
     cli_count++;
@@ -114,41 +130,59 @@ void *handleClient(void *arg){
 
     // Name
     if(recv(cli->sockfd, name, 32, 0) <= 0 || strlen(name) <  2 || strlen(name) >= 32-1){
-        printf("Didn't enter the name.\n");
+        printf("You did not enter your name.\n");
         leave_flag = 1;
     } else{
+        // sending message and printing when a new client joins
         strcpy(cli->name, name);
         sprintf(buff_out, "%s has joined\n", cli->name);
         printf("%s", buff_out);
-        send_message(buff_out, cli->uid);
+        send_message(buff_out, cli->uid, NULL);
     }
 
-    bzero(buff_out, BUFFER_SZ);
+    bzero(buff_out, BUFFER_SIZE);
 
     for(;;){
         if (leave_flag) {
             break;
         }
 
-        int receive = recv(cli->sockfd, buff_out, BUFFER_SZ, 0);
+        int receive = recv(cli->sockfd, buff, BUFFER_SIZE, 0);
         if (receive > 0){
-            if(strlen(buff_out) > 0){
-                send_message(buff_out, cli->uid);
+            if(strlen(buff) > 0){
+
+
+                if(strncmp(buff, "@", 1) == 0){
+                    //extract the recipient's name
+                   //  bzero(receiver, strlen(receiver));
+                    for(int i=0; i< strlen(buff); ++i){
+                        if(buff[i] == ' ' || buff[i] == 10)  // new line character
+                            break;
+                        if(buff[i] == 64)  // The @ symbol
+                            continue;
+                        strcat(receiver, (char[]){buff[i], 0});
+                    }
+                }else{
+                    str_trim_lf(buff, strlen(buff));
+                    //Attach sender to message
+                    sprintf(buff_out, "[%s]: %s \n", cli->name, buff);
+                    send_message(buff_out, cli->uid, NULL);
+                }
 
                 str_trim_lf(buff_out, strlen(buff_out));
-                printf("%s -> %s\n", buff_out, cli->name);
+                printf("%s\n",  buff_out);
             }
         } else if (receive == 0 || strcmp(buff_out, "exit") == 0){  // an exit message for client exit
             sprintf(buff_out, "%s has left\n", cli->name);
             printf("%s", buff_out);
-            send_message(buff_out, cli->uid);
+            send_message(buff_out, cli->uid, NULL);
             leave_flag = 1;
         } else {
             printf("ERROR: -1\n");
             leave_flag = 1;
         }
 
-        bzero(buff_out, BUFFER_SZ);
+        bzero(buff_out, BUFFER_SIZE);
     }
 
     /* Delete client from queue and yield thread */
@@ -178,8 +212,27 @@ int main(){
     /* Ignore pipe signals */
     signal(SIGPIPE, SIG_IGN);
 
-    if(setsockopt(listenfd, SOL_SOCKET,(SO_REUSEPORT | SO_REUSEADDR),(char*)&option,sizeof(option)) < 0){
-        perror("ERROR: setsockopt failed");
+    /*
+     * The setsockpt function is used to set the socket options (define the socket behaviour)
+     * The first argument is the name of the socket (listenfd)
+     * int level: is set to SOL_SOCKET which sets options at the socket level
+     * int option_name:
+     *          SO_REUSEADDR -  enables local address reuse
+     *                          Indicates that the socket can be reused. If set before binding the socket,
+     *                          ensures successful binding, unless there is another socket with
+     *                          EXACTLY the same port and address combination..(ensures No Address already in use error)
+     *          SO_REUSEPORT - enables duplicate ports and bindings
+     *                          allows binding an arbitrary number of sockets
+     *                          to exactly the same source address and port provided all prior bound sockets
+     *                          also had SO_REUSEPORT set before being bound
+     *
+     * char * optval:  A pointer to buffer containing data need by the set command.
+     *                 When the integer is nonzero, the option is enabled.
+     *
+     * int optlen: size of data pointed to by optval (in our case, it is size of int)
+     * */
+    if(setsockopt(listenfd, SOL_SOCKET,(SO_REUSEPORT | SO_REUSEADDR), (char*)&option, sizeof(option)) < 0){
+        perror("ERROR: setting socking options failed");
         return EXIT_FAILURE;
     }
 
