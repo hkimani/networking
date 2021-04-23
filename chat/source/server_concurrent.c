@@ -90,15 +90,29 @@ void send_message(char *msg, int uid, char* receiver){  // takes the msg to be s
     pthread_mutex_lock(&clients_mutex);
 
     //IFF a receiver is specified (Send only to that receiver) forget everyone else
-    if(receiver){
+    if(receiver != NULL){
         for(int i=0; i<MAX_CLIENTS; ++i){
-            if(strcmp(clients[i]->name, receiver) == 0){ // if the client name matches the receiver name
-                if(write(clients[i]->sockfd, msg, strlen(msg)) < 0){
-                    perror("ERROR: write to descriptor failed");
-                    break;
+            if(clients[i]) {
+                if (strcmp(clients[i]->name, receiver) == 0) { // if the client name matches the receiver name
+                    if (write(clients[i]->sockfd, msg, strlen(msg)) < 0) {
+                        perror("ERROR: write to descriptor failed");
+                        break;
+                    }else{
+                        goto finish;
+                    }
                 }
             }
         }
+
+    //The username does not exist in the chatroom
+    for(int i=0; i<MAX_CLIENTS; ++i){
+        if(clients[i] && clients[i]->uid == uid){
+            bzero(msg, strlen(msg));
+            strcpy(msg, "This user does not exist! \n");
+            write(clients[i]->sockfd, msg, strlen(msg));
+        }
+    }
+
     }else{
         //If no receiver is specified, send to all
         for(int i=0; i<MAX_CLIENTS; ++i){
@@ -113,14 +127,14 @@ void send_message(char *msg, int uid, char* receiver){  // takes the msg to be s
         }
 
     }
-
+    finish:
     pthread_mutex_unlock(&clients_mutex);
 }
 
 /* Handle all communication with the client */
 void *handleClient(void *arg){
     char buff_out[BUFFER_SIZE];
-    char buff[BUFFER_SIZE];
+    char buff[BUFFER_SIZE], message[BUFFER_SIZE];
     char name[32];
     char receiver[32];
     int leave_flag = 0;
@@ -138,6 +152,16 @@ void *handleClient(void *arg){
         sprintf(buff_out, "%s has joined\n", cli->name);
         printf("%s", buff_out);
         send_message(buff_out, cli->uid, NULL);
+
+        //SEND LIST OF CONNECTED CLIENTS
+        for(int i=0; i<MAX_CLIENTS; i++){
+            if(clients[i] && clients[i]->uid != cli->uid){
+                bzero(buff_out, strlen(buff_out));
+                sprintf(buff_out, "%s is in the Chatroom \n", clients[i]->name);
+                send_message(buff_out, cli->uid, cli->name);
+            }
+        }
+
     }
 
     bzero(buff_out, BUFFER_SIZE);
@@ -154,13 +178,21 @@ void *handleClient(void *arg){
 
                 if(strncmp(buff, "@", 1) == 0){
                     //extract the recipient's name
-                    for(int i=0; i< strlen(buff); ++i){
-                        if(buff[i] == ' ' || buff[i] == 10)  // new line character
+                    bzero(receiver, sizeof(receiver));
+                    for(int i=0; i< strlen(buff); ++i) {
+                        if (buff[i] == ' ' || buff[i] == 10){  // new line character
+                            str_trim_lf(buff, strlen(buff));
+                            memcpy(message, buff + 1 + i, strlen(buff) + 1 - i);
                             break;
+                        }
                         if(buff[i] == 64)  // The @ symbol
                             continue;
                         strcat(receiver, (char[]){buff[i], 0});
                     }
+
+                    //Attach sender to message
+                    sprintf(buff_out, "[%s]: %s \n", cli->name, message);
+                    send_message(buff_out, cli->uid, receiver);
                 }else{
                     str_trim_lf(buff, strlen(buff));
                     //Attach sender to message
@@ -171,7 +203,7 @@ void *handleClient(void *arg){
                 str_trim_lf(buff_out, strlen(buff_out));
                 printf("%s\n",  buff_out);
             }
-        } else if (receive == 0 || strcmp(buff_out, "exit") == 0){  // an exit message for client exit
+        } else if (receive == 0 || strcmp(buff, "exit") == 0){  // an exit message for client exit
             sprintf(buff_out, "%s has left\n", cli->name);
             printf("%s", buff_out);
             send_message(buff_out, cli->uid, NULL);
