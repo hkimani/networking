@@ -58,6 +58,8 @@ void* handleClient(void* p_fd){
     printf("Server: Enter a message: ");
     fgets(new_message, 100, stdin);
     sendto(fd, new_message, 256, 0,(struct sockaddr*)&client,sizeof(client));
+
+    return NULL;
 }
 
 int main()
