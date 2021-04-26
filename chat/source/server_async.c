@@ -271,9 +271,6 @@ int main(){
          *  arg3 - set of fds to check for errors
          *  arg4 - optional timeout value (check for how long?)
          * */
-        struct timeval timeout;
-        timeout.tv_sec = 5; // 5 Seconds
-        timeout.tv_usec = 0; //0 nano seconds
         if(select(FD_SETSIZE, &ready_sockets, NULL, NULL, NULL) < 0){
             perror("Select Error");
             exit(EXIT_FAILURE);
