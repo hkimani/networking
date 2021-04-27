@@ -9,6 +9,8 @@ compile:
 	$(CC)  $(SRC_DIR)/client.c -o bin/client  -pthread
 	$(CC)  $(SRC_DIR)/server.c -o bin/server
 	$(CC)  $(SRC_DIR)/server_async.c -o bin/server_async
+	$(CC)  $(SRC_DIR)/server_fork.c -o bin/server_fork
+	$(CC)  $(SRC_DIR)/client_fork.c -o bin/client_fork
 	$(CC)  $(SRC_DIR)/udpclient.c -o bin/udpclient
 	$(CC)  $(SRC_DIR)/client_concurrent_udp.c -o bin/client_concurrent_udp
 	$(CC)  $(SRC_DIR)/udpserver.c -o bin/udpserver
