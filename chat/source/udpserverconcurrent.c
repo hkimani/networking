@@ -25,11 +25,10 @@ typedef struct
     int uid;
     char name[32];
 } client_t;
-
-struct sockaddr_in clientaddr;
- size = sizeof(clientaddr);
-
 client_t *clients[MAX_CLIENTS];
+
+
+
 
 pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -106,11 +105,14 @@ void send_message(char *msg, int uid, char *receiver)
 { // takes the msg to be sent, id of sender and receiver
     pthread_mutex_lock(&clients_mutex);
 
+
+
     //IFF a receiver is specified (Send only to that receiver) forget everyone else
     if (receiver != NULL)
     {
         for (int i = 0; i < MAX_CLIENTS; ++i)
         {
+           int size = sizeof(clients[i]->address); //specify client size
             if (clients[i])
             {
                 if (strcmp(clients[i]->name, receiver) == 0)
@@ -119,7 +121,7 @@ void send_message(char *msg, int uid, char *receiver)
 
                     if (sendto(clients[i]->sockfd,msg,strlen(msg),0,(struct sockaddr *)&clients[i]->address,sizeof(clients[i]->address)) < 0)
                     {
-                        perror("ERROR: write to descriptor failed");
+                        perror("ERROR: writing to descriptor failed 2");
                         break;
                     }
                     else
@@ -133,11 +135,13 @@ void send_message(char *msg, int uid, char *receiver)
         //The username does not exist in the chatroom
         for (int i = 0; i < MAX_CLIENTS; ++i)
         {
+           int size = sizeof(clients[i]->address); //specify client size
+
             if (clients[i] && clients[i]->uid == uid)
             {
                 bzero(msg, strlen(msg));
                 strcpy(msg, "This user does not exist! \n");
-                write(clients[i]->sockfd, msg, strlen(msg));
+                sendto(clients[i]->sockfd,msg,strlen(msg),0,(struct sockaddr *)&clients[i]->address,sizeof(clients[i]->address));
             }
         }
     }
@@ -146,13 +150,15 @@ void send_message(char *msg, int uid, char *receiver)
         //If no receiver is specified, send to all
         for (int i = 0; i < MAX_CLIENTS; ++i)
         {
+           int size = sizeof(clients[i]->address); //specify client size
+
             if (clients[i])
             {
                 if (clients[i]->uid != uid)
                 { // if the client id is not sender's id, send message the client
-                    if (write(clients[i]->sockfd, msg, strlen(msg)) < 0)
+                    if ( sendto(clients[i]->sockfd,msg,strlen(msg),0,(struct sockaddr *)&clients[i]->address,&size)< 0);
                     {
-                        perror("ERROR: write to descriptor failed");
+                        perror("ERROR: write to descriptor failed 1");
                         break;
                     }
                 }
@@ -175,9 +181,9 @@ void *handleClient(void *arg)
 
     cli_count++;
     client_t *cli = (client_t *)arg;
-    size = sizeof(cli);
+    size = sizeof(cli->address);
     // Name
-    if (recvfrom(cli->sockfd, name, 32, 0, (struct sockaddr *)&clientaddr, &size) < 0 || strlen(name) < 2 || strlen(name) >= 32 - 1)
+    if (recvfrom(cli->sockfd, name, 32, 0, (struct sockaddr *)&cli->address, &size) < 0 || strlen(name) < 2 || strlen(name) >= 32 - 1)
     {
         printf("You did not enter your name.\n");
         leave_flag = 1;
@@ -211,7 +217,7 @@ void *handleClient(void *arg)
             break;
         }
       
-        int receive = recvfrom(cli->sockfd, buff, BUFFER_SIZE, 0, (struct sockaddr *)&clientaddr, &size);
+        int receive = recvfrom(cli->sockfd, buff, BUFFER_SIZE, 0, (struct sockaddr *)&cli->address, &size);
         if (receive > 0)
         {
             if (strlen(buff) > 0)
@@ -281,13 +287,13 @@ int main()
 
     char *ip = "127.0.0.1";
     int option = 1;
-    int listenfd = 0, connfd = 0;
+    int connfd = 0, listenfd=0;
     struct sockaddr_in serv_addr;
     struct sockaddr_in cli_addr;
     pthread_t tid;
 
     /* Socket settings */
-    listenfd = socket(AF_INET, SOCK_DGRAM, 0);
+    connfd = socket(AF_INET, SOCK_DGRAM, 0);
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = inet_addr(ip);
     serv_addr.sin_port = htons(PORT);
@@ -296,7 +302,7 @@ int main()
 
     /*
      * The setsockpt function is used to set the socket options (define the socket behaviour)
-     * The first argument is the name of the socket (listenfd)
+     * The first argument is the name of the socket (connfd)
      * int level: is set to SOL_SOCKET which sets options at the socket level
      * int option_name:
      *          SO_REUSEADDR -  enables local address reuse
@@ -313,31 +319,32 @@ int main()
      *
      * int optlen: size of data pointed to by optval (in our case, it is size of int)
      * */
-    if (setsockopt(listenfd, SOL_SOCKET, (SO_REUSEPORT | SO_REUSEADDR), (char *)&option, sizeof(option)) < 0)
-    {
-        perror("ERROR: setting socking options failed");
+    // if (setsockopt(connfd, SOL_SOCKET, (SO_REUSEPORT | SO_REUSEADDR), (char *)&option, sizeof(option)) < 0)
+    // {
+    //     perror("ERROR: setting socking options failed");
+    //     return EXIT_FAILURE;
+    // }
+    /*   */
+    if (connfd < 0) {
+        perror("ERROR: Socket failed");
         return EXIT_FAILURE;
     }
 
     /* Bind */
-    if (bind(listenfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+    if (bind(connfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
     {
         perror("ERROR: Socket binding failed");
         return EXIT_FAILURE;
     }
 
-    /* Listen */
-    // if (listen(listenfd, 10) < 0) {
-    //     perror("ERROR: Socket listening failed");
-    //     return EXIT_FAILURE;
-    // }
+    
 
     printf("=== CHATROOM IS OPEN ===\n");
 
     for (;;)
     { //Server listens eternally
         socklen_t clilen = sizeof(cli_addr);
-        //connfd = accept(listenfd, (struct sockaddr*)&cli_addr, &clilen);
+        //connfd = accept(connfd, (struct sockaddr*)&cli_addr, &clilen);
 
         /* Check if max clients is reached */
         if ((cli_count + 1) == MAX_CLIENTS)
@@ -345,14 +352,14 @@ int main()
             printf("Max clients reached. Rejected: ");
             print_client_addr(cli_addr);
             printf(":%d\n", cli_addr.sin_port);
-            close(listenfd);
+            close(connfd);
             continue;
         }
 
         /* Client settings */
         client_t *cli = (client_t *)malloc(sizeof(client_t));
         cli->address = cli_addr;
-        cli->sockfd = listenfd;
+        cli->sockfd = connfd;
         cli->uid = uid++;
 
         /* Add client to the queue and fork thread */

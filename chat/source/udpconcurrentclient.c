@@ -12,13 +12,14 @@
 #define LENGTH 2048
 #define PORT 9051
 
-    struct sockaddr_in server_addr;
-    size=sizeof(server_addr);
+    
 
 // Global variables
 volatile sig_atomic_t flag = 0;
 int sockfd = 0;
 char name[32];
+struct sockaddr_in server_addr;
+int size=sizeof(server_addr);
 
 //function to clear the screen
 void str_overwrite_stdout() {
@@ -56,7 +57,12 @@ void send_msg_handler() {
             break;
         } else {
             sprintf(buffer, "%s\n", message);
-            sendto(sockfd, buffer, strlen(buffer),0,(struct sockaddr*)&server_addr,sizeof(server_addr));
+            //sendto(sockfd, buffer, strlen(buffer),0,(struct sockaddr*)&server_addr,sizeof(server_addr));
+             if ( sendto(sockfd,buffer,strlen(buffer),0,(struct sockaddr *)&server_addr,sizeof(server_addr))< 0);
+                    {
+                        perror("ERROR: message function send to func");
+                        break;
+                    }
         }
 
         bzero(message, LENGTH);
@@ -83,6 +89,10 @@ void recv_msg_handler() {
 }
 
 int main(){
+    struct sockaddr_in server_addr;
+    int size=sizeof(server_addr);
+    
+
 
     char *ip = "127.0.0.1";
 
@@ -106,7 +116,7 @@ int main(){
     server_addr.sin_port = htons(PORT);
 
 
-    // // Connect to Server
+    // Connect to Server
     // int err = connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr));
     // if (err == -1) {
     //     printf("ERROR: connect\n");
