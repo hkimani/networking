@@ -53,7 +53,31 @@ void print_client_addr(struct sockaddr_in addr){
            (addr.sin_addr.s_addr & 0xff000000) >> 24);
 }
 
+/* Add clients to queue */
+void enqueue(client_t *cl){
 
+    for(int i=0; i < MAX_CLIENTS; ++i){
+        if(!clients[i]){
+            clients[i] = cl;
+            break;
+        }
+    }
+
+}
+
+/* Remove clients to queue */
+void dequeue(int uid){
+
+    for(int i=0; i < MAX_CLIENTS; ++i){
+        if(clients[i]){
+            if(clients[i]->uid == uid){
+                clients[i] = NULL;
+                break;
+            }
+        }
+    }
+
+}
 
 /* Send message to all clients except sender */
 void send_message(char *msg, int uid, char* receiver){  // takes the msg to be sent, id of sender and receiver
@@ -185,7 +209,7 @@ void *handleClient(void *arg){
     }
 
     close(cli->sockfd);
-
+    dequeue(cli->uid);
     free(cli);
     cli_count--;
 
@@ -287,6 +311,7 @@ int main(){
                 if(i == listenfd){   // if fd is the server socket, Then it is a NEW CONNECTION
                     connfd = accept(listenfd, (struct sockaddr*)&cli_addr, &clilen); // accept the new connection
                     FD_SET(connfd, &current_sockets); // Add that client to list of sockets to watch
+                    printf("A new client connected ");
                 }else{ // Means that connection is a client, so you handle the client
                     /* Client settings */
                     client_t *cli = (client_t *)malloc(sizeof(client_t));
@@ -294,6 +319,7 @@ int main(){
                     cli->sockfd = connfd;
                     cli->uid = uid++;
 
+                    enqueue(cli);
                     handleClient((void*)cli);  // handle the client
                     FD_CLR(i, &current_sockets); // Remove the socket from the list of FDs being watched
                 }

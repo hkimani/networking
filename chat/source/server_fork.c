@@ -6,7 +6,6 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
-#include <pthread.h>
 #include <sys/types.h>
 #include <signal.h>
 
@@ -15,7 +14,6 @@
 #define PORT 9051
 
 pid_t childPid;
-pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static _Atomic unsigned int cli_count = 0;
 static int uid = 10;
@@ -59,7 +57,6 @@ void print_client_addr(struct sockaddr_in addr){
 
 /* Add clients to queue */
 void enqueue(client_t *cl){
-    pthread_mutex_lock(&clients_mutex);
 
     for(int i=0; i < MAX_CLIENTS; ++i){
         if(!clients[i]){
@@ -68,12 +65,10 @@ void enqueue(client_t *cl){
         }
     }
 
-    pthread_mutex_unlock(&clients_mutex);
 }
 
 /* Remove clients to queue */
 void dequeue(int uid){
-    pthread_mutex_lock(&clients_mutex);
 
     for(int i=0; i < MAX_CLIENTS; ++i){
         if(clients[i]){
@@ -84,7 +79,6 @@ void dequeue(int uid){
         }
     }
 
-    pthread_mutex_unlock(&clients_mutex);
 }
 
 /* Send message to all clients except sender */
@@ -135,34 +129,11 @@ void send_message(char *msg, int uid, char* receiver){  // takes the msg to be s
 void *handleClient(void *arg){
     char buff_out[BUFFER_SIZE];
     char buff[BUFFER_SIZE], message[BUFFER_SIZE];
-    char name[32];
     char receiver[32];
     int leave_flag = 0;
 
     cli_count++;
     client_t *cli = (client_t *)arg;
-
-    // Name
-    if(recv(cli->sockfd, name, 32, 0) <= 0 || strlen(name) <  2 || strlen(name) >= 32-1){
-        printf("You did not enter your name.\n");
-        leave_flag = 1;
-    } else{
-        // sending message and printing when a new client joins
-        strcpy(cli->name, name);
-        sprintf(buff_out, "%s has joined\n", cli->name);
-        printf("%s", buff_out);
-        send_message(buff_out, cli->uid, NULL);
-
-        //SEND LIST OF CONNECTED CLIENTS
-        for(int i=0; i<MAX_CLIENTS; i++){
-            if(clients[i] && clients[i]->uid != cli->uid){
-                bzero(buff_out, strlen(buff_out));
-                sprintf(buff_out, "%s is in the Chatroom \n", clients[i]->name);
-                send_message(buff_out, cli->uid, cli->name);
-            }
-        }
-
-    }
 
     bzero(buff_out, BUFFER_SIZE);
 
@@ -299,6 +270,30 @@ int main(){
         cli->sockfd = connfd;
         cli->uid = uid++;
 
+        // Get client  Name
+        char name[32];
+        char buff_out[BUFFER_SIZE];
+        int leave_flag = 0;
+        if(recv(cli->sockfd, name, 32, 0) <= 0 || strlen(name) <  2 || strlen(name) >= 32-1){
+            printf("You did not enter your name.\n");
+            leave_flag = 1;
+        } else{
+            // sending message and printing when a new client joins
+            strcpy(cli->name, name);
+            sprintf(buff_out, "%s has joined\n", cli->name);
+            printf("%s", buff_out);
+            send_message(buff_out, cli->uid, NULL);
+
+            //SEND LIST OF CONNECTED CLIENTS
+            for(int i=0; i<MAX_CLIENTS; i++){
+                if(clients[i] != NULL && clients[i]->uid != cli->uid){
+                    bzero(buff_out, strlen(buff_out));
+                    sprintf(buff_out, "%s is in the Chatroom \n", clients[i]->name);
+                    send_message(buff_out, cli->uid, cli->name);
+                }
+            }
+
+        }
         /* Add client to the queue */
         enqueue(cli);
 
