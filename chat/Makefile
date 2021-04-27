@@ -12,6 +12,10 @@ compile:
 	$(CC)  $(SRC_DIR)/server_fork.c -o bin/server_fork
 	$(CC)  $(SRC_DIR)/client_fork.c -o bin/client_fork
 	$(CC)  $(SRC_DIR)/udpclient.c -o bin/udpclient
+	$(CC)  $(SRC_DIR)/udpconcurrentclient.c -o bin/udpconcurrentclient -pthread
+	$(CC)  $(SRC_DIR)/udpserverconcurrent.c -o bin/udpserverconcurrent -pthread
+
+
 	$(CC)  $(SRC_DIR)/client_concurrent_udp.c -o bin/client_concurrent_udp
 	$(CC)  $(SRC_DIR)/udpserver.c -o bin/udpserver
 	$(CC)  $(SRC_DIR)/server_concurrent.c -o bin/server_concurrent -pthread
