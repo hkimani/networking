@@ -6,9 +6,9 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
-#include <pthread.h>
+#include <pthread.h>  //Threads
 #include <sys/types.h>
-#include <signal.h>
+#include <signal.h>  // signals
 
 #define MAX_CLIENTS 100
 #define BUFFER_SIZE 2048
@@ -27,7 +27,7 @@ typedef struct{
 
 client_t *clients[MAX_CLIENTS];
 
-pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;  // for mutual exclusion
 
 //function to clear the screen
 void str_overwrite_stdout() {
@@ -94,10 +94,10 @@ void send_message(char *msg, int uid, char* receiver){  // takes the msg to be s
         for(int i=0; i<MAX_CLIENTS; ++i){
             if(clients[i]) {
                 if (strcmp(clients[i]->name, receiver) == 0) { // if the client name matches the receiver name
-                    if (write(clients[i]->sockfd, msg, strlen(msg)) < 0) {
+                    if (write(clients[i]->sockfd, msg, strlen(msg)) < 0) { //send to recv
                         perror("ERROR: write to descriptor failed");
                         break;
-                    }else{
+                    }else{ // if send is successful
                         goto finish;
                     }
                 }
@@ -142,7 +142,7 @@ void *handleClient(void *arg){
     cli_count++;
     client_t *cli = (client_t *)arg;
 
-    // Name
+    // Get client Name
     if(recv(cli->sockfd, name, 32, 0) <= 0 || strlen(name) <  2 || strlen(name) >= 32-1){
         printf("You did not enter your name.\n");
         leave_flag = 1;
@@ -180,12 +180,12 @@ void *handleClient(void *arg){
                     //extract the recipient's name
                     bzero(receiver, sizeof(receiver));
                     for(int i=0; i< strlen(buff); ++i) {
-                        if (buff[i] == ' ' || buff[i] == 10){  // new line character
+                        if (buff[i] == ' ' || buff[i] == 10){  // new line character - ASCII
                             str_trim_lf(buff, strlen(buff));
                             memcpy(message, buff + 1 + i, strlen(buff) + 1 - i);
                             break;
                         }
-                        if(buff[i] == 64)  // The @ symbol
+                        if(buff[i] == 64)  // The @ symbol - ASCII
                             continue;
                         strcat(receiver, (char[]){buff[i], 0});
                     }
@@ -201,7 +201,7 @@ void *handleClient(void *arg){
                 }
 
                 str_trim_lf(buff_out, strlen(buff_out));
-                printf("%s\n",  buff_out);
+                printf("%s\n",  buff_out); // Print msg on server
             }
         } else if (receive == 0 || strcmp(buff, "exit") == 0){  // an exit message for client exit
             sprintf(buff_out, "%s has left\n", cli->name);
@@ -233,13 +233,14 @@ int main(){
     int listenfd = 0, connfd = 0;
     struct sockaddr_in serv_addr;
     struct sockaddr_in cli_addr;
-    pthread_t tid;
+    pthread_t tid;  // thread object
 
     /* Socket settings */
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = inet_addr(ip);
     serv_addr.sin_port = htons(PORT);
+
     /* Ignore pipe signals */
     signal(SIGPIPE, SIG_IGN);
 

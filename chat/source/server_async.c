@@ -311,7 +311,6 @@ int main(){
                 if(i == listenfd){   // if fd is the server socket, Then it is a NEW CONNECTION
                     connfd = accept(listenfd, (struct sockaddr*)&cli_addr, &clilen); // accept the new connection
                     FD_SET(connfd, &current_sockets); // Add that client to list of sockets to watch
-                    printf("A new client connected ");
                 }else{ // Means that connection is a client, so you handle the client
                     /* Client settings */
                     client_t *cli = (client_t *)malloc(sizeof(client_t));

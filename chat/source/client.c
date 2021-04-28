@@ -7,7 +7,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <pthread.h>
+#include <pthread.h>  // for threads
 
 #define LENGTH 2048
 #define PORT 9051
