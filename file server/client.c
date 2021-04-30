@@ -14,6 +14,18 @@
 #include <unistd.h> // for close
 
 #define PORT 9051
+#define LENGTH 2048
+
+//function to trim the input
+void str_trim_lf (char* arr, int length) {
+    int i;
+    for (i = 0; i < length; i++) { // trim \n
+        if (arr[i] == '\n') {
+            arr[i] = '\0';
+            break;
+        }
+    }
+}
 
 int main()
 {
@@ -23,12 +35,9 @@ int main()
     // File descriptor. (Socket Id)
     int fd;
 
-    // Connection file descriptor. (Connection Id)
-    int conn;
-
     // Message store for messages from server
-    char message[256];
-    char response[256];
+    char message[LENGTH];
+    char response[LENGTH];
 
     fd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -36,8 +45,10 @@ int main()
     server.sin_port = htons(PORT);
     server.sin_addr.s_addr = INADDR_ANY;
 
+    socklen_t len = sizeof(server);
+
     // Client connects to server
-    int connection_status = connect(fd, (struct sockaddr *)&server, sizeof(server)); //This connects the client to the server.
+    int connection_status = connect(fd, (struct sockaddr *)&server, len); //This connects the client to the server.
 
     // check for error with the connection
     if (connection_status == -1)
@@ -48,22 +59,26 @@ int main()
     else
     {
         printf("Enter DISCONNECT to terminate connection\n");
-        recv(fd, &response, sizeof(response), 0);
-        printf("--%s--", response);
-        printf("\n");
+        // recv(fd, &response, sizeof(response), 0);
+        // printf("--%s--", response);
+        // printf("\n");
     }
 
     for (;;){
 
        //get the request from the client
-       fgets(message, sizeof(message), stdin);
+       printf("Enter: \" w\" \"filename\" \" size\" for a write request and  \" r \" \"filename\" \" size\" for a read request \n");
+       fgets(message, LENGTH, stdin);
+       str_trim_lf(message, LENGTH);
        if(send(fd, message, strlen(message), 0) < 0)
-                printf("did not send message to server");
+            printf("ERROR: Send to Server failed");
 
-        //If the client receives a disconnect successful message, it terminates
-        if (strncmp("DISCONNECT SUCCESSFUL", response, strlen(response)) == 0)
-            break;
-
+        // Receive response from server (Read or write instructions)
+        bzero(message, 0);
+        if(recv(fd, message, LENGTH, 0) < 0){
+            printf("ERROR: Receive from server failed");
+        }
+        printf("%s\n", message);
     }
 
     close(fd);
