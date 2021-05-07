@@ -1,6 +1,6 @@
 compile:
 	gcc ./file_io.c -o file_io
-	gcc ./server.c -o server
-	gcc ./client.c -o client
+	gcc ./stateless_server.c -o stateless_server
+	gcc ./stateless_client.c -o stateless_client
 
 

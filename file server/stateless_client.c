@@ -88,7 +88,8 @@ int main()
             printf("ERROR: Send to Server failed");
 
         // Receive response from server (Read or write instructions)
-        bzero(message, 0);
+        bzero(message, strlen(message));
+
         if(recv(fd, message, LENGTH, 0) < 0){
             printf("ERROR: Receive from server failed");
         }
