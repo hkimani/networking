@@ -64,12 +64,26 @@ int main()
         // printf("\n");
     }
 
-    for (;;){
+   // for (;;){
 
        //get the request from the client
-       printf("Enter: \" w\" \"filename\" \" size\" for a write request and  \" r \" \"filename\" \" size\" for a read request \n");
-       fgets(message, LENGTH, stdin);
+       printf("Enter: \"read\" for a read request and \" write\" for a write request \n");
+       fgets(message, LENGTH, stdin); // get the user choice
        str_trim_lf(message, LENGTH);
+       if(strcmp(message, "read") == 0){
+           printf("Enter: r filename start_position end_position \n");
+           bzero(message, strlen(message));
+           fgets(message, LENGTH, stdin); // get the user choice
+       }
+       else if(strcmp(message, "write") == 0){
+           printf("Enter: w filename start_position end_position message \n");
+           bzero(message, strlen(message));
+           fgets(message, LENGTH, stdin); // get the user choice
+       }
+       else{
+           printf("Unknown input!");
+           exit(EXIT_FAILURE);
+       }
        if(send(fd, message, strlen(message), 0) < 0)
             printf("ERROR: Send to Server failed");
 
@@ -78,8 +92,8 @@ int main()
         if(recv(fd, message, LENGTH, 0) < 0){
             printf("ERROR: Receive from server failed");
         }
-        printf("%s\n", message);
-    }
+        printf("\n [server response]: \n %s \n", message);
+  //  }
 
     close(fd);
 
